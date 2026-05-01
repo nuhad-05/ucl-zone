@@ -6,13 +6,13 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ApiResponseWrapper {
 
-    private List<PlayerEntry> response;
+    private List<PlayerInfo> response;
 
-    public List<PlayerEntry> getResponse() {
+    public List<PlayerInfo> getResponse() {
         return response;
     }
 
-    public void setResponse(List<PlayerEntry> response) {
+    public void setResponse(List<PlayerInfo> response) {
         this.response = response;
     }
 

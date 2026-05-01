@@ -1,24 +1,37 @@
 package player.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.List;
+
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PlayerInfo {
 
-    private PlayerInfo player;
-    private List<StatisticsEntry> statistics;
+    private String name;
+    private Integer age;
+    private String nationality;
 
-    public PlayerInfo getPlayer() {
-        return player;
+    public String getName() {
+        return name;
     }
 
-    public List<StatisticsEntry> getStatistics() {
-        return statistics;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setStatistics(List<StatisticsEntry> statistics) {
-        this.statistics = statistics;
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
     }
 
 }
