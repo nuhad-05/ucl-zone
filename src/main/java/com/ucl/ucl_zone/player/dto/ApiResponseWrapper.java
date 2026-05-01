@@ -1,4 +1,4 @@
-package player.dto;
+package com.ucl.ucl_zone.player.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
