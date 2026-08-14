@@ -1,5 +1,7 @@
 package com.ucl.ucl_zone;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -8,13 +10,18 @@ import org.springframework.web.client.RestTemplate;
 @SpringBootApplication
 public class UclZoneApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(UclZoneApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(UclZoneApplication.class, args);
+    }
 
     @Bean
     public RestTemplate restTemplate() {
-    return new RestTemplate();
+        return new RestTemplate();
+    }
+
+    @Bean
+    CommandLineRunner debugPassword(@Value("${spring.datasource.password}") String pw) {
+        return args -> System.out.println("RESOLVED PASSWORD -> [" + pw + "] length=" + pw.length());
     }
 
 }
