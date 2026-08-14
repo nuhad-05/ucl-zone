@@ -6,11 +6,15 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PlayerEntry {
 
-    private PlayerEntry player;
+    private PlayerInfo player;
     private List<StatisticsEntry> statistics;
 
-    public PlayerEntry getPlayer() {
+    public PlayerInfo getPlayer() {
         return player;
+    }
+
+    public void setPlayer(PlayerInfo player) {
+        this.player = player;
     }
 
     public List<StatisticsEntry> getStatistics() {
