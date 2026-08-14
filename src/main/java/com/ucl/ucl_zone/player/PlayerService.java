@@ -2,14 +2,13 @@ package com.ucl.ucl_zone.player;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
 
-@Component
+@Service
 public class PlayerService {
 
     private final PlayerRepository playerRepository;
@@ -24,41 +23,27 @@ public class PlayerService {
     }
 
     public List<Player> getPlayersByTeam(String teamName) {
-        return playerRepository.findAll().stream()
-        .filter(player -> teamName.equals(player.getTeam()))
-        .collect(Collectors.toList()); 
+        return playerRepository.findByTeamIgnoreCase(teamName);
     }
 
     public List<Player> getPlayersByName(String searchText) {
-        return playerRepository.findAll().stream()
-        .filter(player -> player.getName().toLowerCase().contains(searchText.toLowerCase()))
-        .collect(Collectors.toList());
+        return playerRepository.findByNameContainingIgnoreCase(searchText);
     }
 
     public List<Player> getPlayersByPosition(String searchText) {
-        return playerRepository.findAll().stream()
-                .filter(player -> player.getPosition() != null &&
-                        player.getPosition().toLowerCase().contains(searchText.toLowerCase()))
-                .collect(Collectors.toList());
+        return playerRepository.findByPositionContainingIgnoreCase(searchText);
     }
 
     public List<Player> getPlayersByNationality(String searchText) {
-        return playerRepository.findAll().stream()
-                .filter(player -> player.getNationality() != null &&
-                        player.getNationality().toLowerCase().contains(searchText.toLowerCase())) 
-                .collect(Collectors.toList());
+        return playerRepository.findByNationalityContainingIgnoreCase(searchText);
     }
 
     public List<Player> getPlayersByTeamAndPosition(String team, String position) {
-        return playerRepository.findAll().stream()
-                .filter(player -> team.equalsIgnoreCase(player.getTeam()) &&
-                        position.equalsIgnoreCase(player.getPosition()))
-                .collect(Collectors.toList());
+        return playerRepository.findByTeamIgnoreCaseAndPositionIgnoreCase(team, position);
     }
 
     public Player addPlayer(Player player) {
-        playerRepository.save(player);
-        return player;
+        return playerRepository.save(player);
     }
 
     public Player updatePlayer(Player updatedPlayer) {
@@ -66,7 +51,6 @@ public class PlayerService {
 
         if (existingPlayer.isPresent()) {
             Player playerToUpdate = existingPlayer.get();
-            playerToUpdate.setName(updatedPlayer.getName());
             playerToUpdate.setNationality(updatedPlayer.getNationality());
             playerToUpdate.setPosition(updatedPlayer.getPosition());
             playerToUpdate.setAge(updatedPlayer.getAge());
@@ -77,16 +61,13 @@ public class PlayerService {
             playerToUpdate.setAssists(updatedPlayer.getAssists());
             playerToUpdate.setYellowCards(updatedPlayer.getYellowCards());
             playerToUpdate.setRedCards(updatedPlayer.getRedCards());
-            playerRepository.save(playerToUpdate);
-            return playerToUpdate;
+            return playerRepository.save(playerToUpdate);
         }
         return null;
     }
 
     @Transactional
     public void deletePlayer(String playerName) {
-        playerRepository.deleteByname(playerName);
+        playerRepository.deleteByName(playerName);
     }
-
-
 }

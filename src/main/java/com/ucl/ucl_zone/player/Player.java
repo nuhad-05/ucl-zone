@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+
+
 @Entity
 @Table(name = "player_stats")
 public class Player {
@@ -23,6 +25,9 @@ public class Player {
     private Integer assists;
     private Integer yellowCards;
     private Integer redCards;
+
+    public Player() {
+    }
 
     public Player(String name, String nationality, String position, Integer age, String team,
         Integer appearances, Integer minutes, Integer goals, Integer assists, Integer yellowCards,
