@@ -19,15 +19,11 @@ public class DataLoader implements CommandLineRunner {
         this.apiFootballService = apiFootballService;
     }
 
-    @Override
-    public void run(String... args) {
-        if (playerRepository.count() == 0) {
-            List<Player> players = apiFootballService.fetchAllPlayers();
-            playerRepository.saveAll(players);
-            System.out.println("Loaded " + players.size() + " players from API-Football.");
-        } else {
-            System.out.println("Player data already present — skipping API fetch.");
-        }
-    }
+@Override
+public void run(String... args) throws Exception {
+    List<Player> players = apiFootballService.fetchTopTeamPlayers();
+    playerRepository.saveAll(players);
+    System.out.println("Successfully saved " + players.size() + " top club players!");
+}
 
 }

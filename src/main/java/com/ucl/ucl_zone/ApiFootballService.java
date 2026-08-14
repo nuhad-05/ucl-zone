@@ -1,8 +1,8 @@
 package com.ucl.ucl_zone;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.ucl.ucl_zone.player.Player; // Add this import!
+import com.ucl.ucl_zone.player.dto.ApiResponseWrapper;
+import com.ucl.ucl_zone.player.dto.PlayerEntry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -10,101 +10,116 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import com.ucl.ucl_zone.player.Player;
-import com.ucl.ucl_zone.player.dto.ApiResponseWrapper;
-import com.ucl.ucl_zone.player.dto.PlayerEntry;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class ApiFootballService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${api-football.key}")
+    @Value("${api.football.key:${api-football.key:#{null}}}")
     private String apiKey;
 
-    @Value("${api-football.base-url}")
-    private String baseUrl;
-
-    @Value("${api-football.league}")
-    private String league;
-
-    @Value("${api-football.season}")
-    private String season;
+    // Top Champions League Club IDs in API-Football
+    private static final List<Integer> TOP_TEAM_IDS = List.of(
+            541, // Real Madrid
+            50,  // Manchester City
+            157, // Bayern Munich
+            529, // Barcelona
+            42,  // Arsenal
+            85,  // Paris Saint-Germain
+            40,  // Liverpool
+            505  // Inter Milan
+    );
 
     public ApiFootballService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    public List<Player> fetchAllPlayers() {
+    public List<Player> fetchTopTeamPlayers() {
         List<Player> allPlayers = new ArrayList<>();
-        int currentPage = 1;
-        int totalPages = 1;
 
-        do {
-            ApiResponseWrapper wrapper = fetchPage(currentPage);
-            if (wrapper == null || wrapper.getResponse() == null) {
-                break;
-            }
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("x-apisports-key", apiKey);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            for (PlayerEntry entry : wrapper.getResponse()) {
-                Player player = mapToPlayer(entry);
-                if (player != null) {
-                    allPlayers.add(player);
+        for (Integer teamId : TOP_TEAM_IDS) {
+            int currentPage = 1;
+            int totalPages = 1;
+
+            do {
+                String url = "https://v3.football.api-sports.io/players?league=2&season=2024&team=" 
+                             + teamId + "&page=" + currentPage;
+
+                try {
+                    ResponseEntity<ApiResponseWrapper> response = restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            entity,
+                            ApiResponseWrapper.class
+                    );
+
+                    if (response.getBody() != null) {
+                        // Update total pages from API metadata
+                        if (response.getBody().getPaging() != null) {
+                            totalPages = response.getBody().getPaging().getTotal();
+                        }
+
+                        if (response.getBody().getResponse() != null) {
+                            for (PlayerEntry entry : response.getBody().getResponse()) {
+                                Player player = mapToPlayerEntity(entry);
+                                
+                                // Only retain players who recorded actual UCL appearances/minutes
+                                if (player != null && (player.getAppearances() > 0 || player.getMinutes() > 0)) {
+                                    allPlayers.add(player);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error fetching page " + currentPage + " for team " + teamId + ": " + e.getMessage());
                 }
-            }
 
-            if (wrapper.getPaging() != null && wrapper.getPaging().getTotal() != null) {
-                totalPages = wrapper.getPaging().getTotal();
-            }
-            currentPage++;
-
-        } while (currentPage <= totalPages);
+                currentPage++;
+            } while (currentPage <= totalPages);
+        }
 
         return allPlayers;
     }
 
-    private ApiResponseWrapper fetchPage(int page) {
-        String url = UriComponentsBuilder.fromUriString(baseUrl + "/players")
-                .queryParam("league", league)
-                .queryParam("season", season)
-                .queryParam("page", page)
-                .toUriString();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("x-apisports-key", apiKey);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<ApiResponseWrapper> response = restTemplate.exchange(
-                url, HttpMethod.GET, entity, ApiResponseWrapper.class);
-
-        return response.getBody();
-    }
-
-    private Player mapToPlayer(PlayerEntry entry) {
-        if (entry.getPlayer() == null || entry.getStatistics() == null || entry.getStatistics().isEmpty()) {
+    private Player mapToPlayerEntity(PlayerEntry entry) {
+        if (entry == null || entry.getPlayer() == null) {
             return null;
         }
 
-        var info = entry.getPlayer();
-        var stats = entry.getStatistics().get(0);
+        Player player = new Player();
+        player.setName(entry.getPlayer().getName());
+        player.setNationality(entry.getPlayer().getNationality());
+        player.setAge(entry.getPlayer().getAge());
 
-        String name = info.getName();
-        String nationality = info.getNationality();
-        Integer age = info.getAge();
+        if (entry.getStatistics() != null && !entry.getStatistics().isEmpty()) {
+            var stats = entry.getStatistics().get(0);
+            
+            if (stats.getTeam() != null) {
+                player.setTeam(stats.getTeam().getName());
+            }
+            if (stats.getGames() != null) {
+                player.setPosition(stats.getGames().getPosition());
+                player.setAppearances(stats.getGames().getAppearences() != null ? stats.getGames().getAppearences() : 0);
+                player.setMinutes(stats.getGames().getMinutes() != null ? stats.getGames().getMinutes() : 0);
+            }
+            if (stats.getGoals() != null) {
+                player.setGoals(stats.getGoals().getTotal() != null ? stats.getGoals().getTotal() : 0);
+                player.setAssists(stats.getGoals().getAssists() != null ? stats.getGoals().getAssists() : 0);
+            }
+            if (stats.getCards() != null) {
+                player.setYellowCards(stats.getCards().getYellow() != null ? stats.getCards().getYellow() : 0);
+                player.setRedCards(stats.getCards().getRed() != null ? stats.getCards().getRed() : 0);
+            }
+        }
 
-        String team = stats.getTeam() != null ? stats.getTeam().getName() : null;
-        String position = stats.getGames() != null ? stats.getGames().getPosition() : null;
-        Integer appearances = stats.getGames() != null ? stats.getGames().getAppearences() : null;
-        Integer minutes = stats.getGames() != null ? stats.getGames().getMinutes() : null;
-        Integer goals = stats.getGoals() != null ? stats.getGoals().getTotal() : null;
-        Integer assists = stats.getGoals() != null ? stats.getGoals().getAssists() : null;
-        Integer yellowCards = stats.getCards() != null ? stats.getCards().getYellow() : null;
-        Integer redCards = stats.getCards() != null ? stats.getCards().getRed() : null;
-
-        return new Player(name, nationality, position, age, team,
-                appearances, minutes, goals, assists, yellowCards, redCards);
+        return player;
     }
-
 }
