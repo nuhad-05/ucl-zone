@@ -65,6 +65,9 @@ public class ApiFootballService {
                         // Update total pages from API metadata
                         if (response.getBody().getPaging() != null) {
                             totalPages = response.getBody().getPaging().getTotal();
+                        } else {
+                            System.err.println("Warning: no paging info returned for team " + teamId
+                                    + " page " + currentPage + " — response may be incomplete");
                         }
 
                         if (response.getBody().getResponse() != null) {

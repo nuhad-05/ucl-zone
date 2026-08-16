@@ -1,54 +1,60 @@
 package com.ucl.ucl_zone.player;
-
+ 
 import java.util.List;
 import java.util.Optional;
-
+ 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+ 
 import jakarta.transaction.Transactional;
-
+ 
 @Service
 public class PlayerService {
-
+ 
     private final PlayerRepository playerRepository;
-
+ 
     @Autowired
     public PlayerService(PlayerRepository playerRepository) {
         this.playerRepository = playerRepository;
     }
-
+ 
     public List<Player> getPlayer() {
         return playerRepository.findAll();
     }
-
+ 
+    public Page<Player> getPlayer(Pageable pageable) {
+        return playerRepository.findAll(pageable);
+    }
+ 
     public List<Player> getPlayersByTeam(String teamName) {
         return playerRepository.findByTeamIgnoreCase(teamName);
     }
-
+ 
     public List<Player> getPlayersByName(String searchText) {
         return playerRepository.findByNameContainingIgnoreCase(searchText);
     }
-
+ 
     public List<Player> getPlayersByPosition(String searchText) {
         return playerRepository.findByPositionContainingIgnoreCase(searchText);
     }
-
+ 
     public List<Player> getPlayersByNationality(String searchText) {
         return playerRepository.findByNationalityContainingIgnoreCase(searchText);
     }
-
+ 
     public List<Player> getPlayersByTeamAndPosition(String team, String position) {
         return playerRepository.findByTeamIgnoreCaseAndPositionIgnoreCase(team, position);
     }
-
+ 
     public Player addPlayer(Player player) {
         return playerRepository.save(player);
     }
-
+ 
     public Player updatePlayer(Player updatedPlayer) {
         Optional<Player> existingPlayer = playerRepository.findByName(updatedPlayer.getName());
-
+ 
         if (existingPlayer.isPresent()) {
             Player playerToUpdate = existingPlayer.get();
             playerToUpdate.setNationality(updatedPlayer.getNationality());
@@ -65,7 +71,7 @@ public class PlayerService {
         }
         return null;
     }
-
+ 
     @Transactional
     public void deletePlayer(String playerName) {
         playerRepository.deleteByName(playerName);
