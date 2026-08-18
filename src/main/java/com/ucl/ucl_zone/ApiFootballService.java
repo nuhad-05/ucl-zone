@@ -1,8 +1,9 @@
 package com.ucl.ucl_zone;
 
-import com.ucl.ucl_zone.player.Player; // Add this import!
+import com.ucl.ucl_zone.player.Player;
 import com.ucl.ucl_zone.player.dto.ApiResponseWrapper;
 import com.ucl.ucl_zone.player.dto.PlayerEntry;
+import com.ucl.ucl_zone.player.dto.StatisticsEntry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -49,50 +50,81 @@ public class ApiFootballService {
             int currentPage = 1;
             int totalPages = 1;
 
+            System.out.println(">>> Fetching players for Team ID: " + teamId);
+
             do {
-                String url = "https://v3.football.api-sports.io/players?league=2&season=2024&team=" 
+                String url = "https://v3.football.api-sports.io/players?league=2&season=2024&team="
                              + teamId + "&page=" + currentPage;
 
-                try {
-                    ResponseEntity<ApiResponseWrapper> response = restTemplate.exchange(
-                            url,
-                            HttpMethod.GET,
-                            entity,
-                            ApiResponseWrapper.class
-                    );
+                ApiResponseWrapper body = fetchWithRetry(url, entity, teamId, currentPage);
 
-                    if (response.getBody() != null) {
-                        // Update total pages from API metadata
-                        if (response.getBody().getPaging() != null) {
-                            totalPages = response.getBody().getPaging().getTotal();
-                        } else {
-                            System.err.println("Warning: no paging info returned for team " + teamId
-                                    + " page " + currentPage + " — response may be incomplete");
-                        }
+                if (body != null) {
+                    if (body.getPaging() != null && body.getPaging().getTotal() != null) {
+                        totalPages = body.getPaging().getTotal();
+                    }
 
-                        if (response.getBody().getResponse() != null) {
-                            for (PlayerEntry entry : response.getBody().getResponse()) {
-                                Player player = mapToPlayerEntity(entry);
-                                
-                                // Only retain players who recorded actual UCL appearances/minutes
-                                if (player != null && (player.getAppearances() > 0 || player.getMinutes() > 0)) {
-                                    allPlayers.add(player);
-                                }
+                    if (body.getResponse() != null && !body.getResponse().isEmpty()) {
+                        int savedFromPage = 0;
+                        for (PlayerEntry entry : body.getResponse()) {
+                            Player player = mapToPlayerEntity(entry, teamId);
+
+                            if (player != null) {
+                                allPlayers.add(player);
+                                savedFromPage++;
                             }
                         }
+                        System.out.println("Team " + teamId + " | Page " + currentPage + "/" + totalPages 
+                                + " -> Added " + savedFromPage + " players.");
+                    } else {
+                        System.err.println("No player data returned for Team " + teamId + " on page " + currentPage);
                     }
-                } catch (Exception e) {
-                    System.err.println("Error fetching page " + currentPage + " for team " + teamId + ": " + e.getMessage());
+                } else {
+                    System.err.println("Failed to fetch page " + currentPage + " for Team " + teamId);
                 }
 
                 currentPage++;
+
+                // 6-second delay between calls to strictly comply with API-Football's 10 req/min rate limit
+                sleep(6000);
+
             } while (currentPage <= totalPages);
         }
 
         return allPlayers;
     }
 
-    private Player mapToPlayerEntity(PlayerEntry entry) {
+    private ApiResponseWrapper fetchWithRetry(String url, HttpEntity<String> entity, Integer teamId, int page) {
+        try {
+            ResponseEntity<ApiResponseWrapper> response = restTemplate.exchange(
+                    url, HttpMethod.GET, entity, ApiResponseWrapper.class);
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Error fetching page " + page + " for team " + teamId
+                    + ": " + e.getMessage() + " — retrying after 7 seconds...");
+
+            sleep(7000);
+
+            try {
+                ResponseEntity<ApiResponseWrapper> retryResponse = restTemplate.exchange(
+                        url, HttpMethod.GET, entity, ApiResponseWrapper.class);
+                return retryResponse.getBody();
+            } catch (Exception retryException) {
+                System.err.println("Retry failed for page " + page + " for team " + teamId
+                        + ": " + retryException.getMessage());
+                return null;
+            }
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private Player mapToPlayerEntity(PlayerEntry entry, Integer targetTeamId) {
         if (entry == null || entry.getPlayer() == null) {
             return null;
         }
@@ -103,8 +135,9 @@ public class ApiFootballService {
         player.setAge(entry.getPlayer().getAge());
 
         if (entry.getStatistics() != null && !entry.getStatistics().isEmpty()) {
-            var stats = entry.getStatistics().get(0);
-            
+            // Correctly uses your StatisticsEntry DTO type
+            StatisticsEntry stats = entry.getStatistics().get(0);
+
             if (stats.getTeam() != null) {
                 player.setTeam(stats.getTeam().getName());
             }

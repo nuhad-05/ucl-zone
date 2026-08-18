@@ -8,6 +8,7 @@ public class ApiResponseWrapper {
 
     private List<PlayerEntry> response;
     private Paging paging;
+    private Object errors;
 
     public List<PlayerEntry> getResponse() {
         return response;
@@ -23,6 +24,14 @@ public class ApiResponseWrapper {
 
     public void setPaging(Paging paging) {
         this.paging = paging;
+    }
+
+    public Object getErrors() {
+        return errors;
+    }
+
+    public void setErrors(Object errors) {
+        this.errors = errors;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
